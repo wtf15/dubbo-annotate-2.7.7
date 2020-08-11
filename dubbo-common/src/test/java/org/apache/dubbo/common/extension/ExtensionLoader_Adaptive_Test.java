@@ -47,8 +47,13 @@ public class ExtensionLoader_Adaptive_Test {
 
     @Test
     public void test_useAdaptiveClass() throws Exception {
+        // dubbo中SPI源码解读初始位置
+
+        // 加载扩展类加载器
         ExtensionLoader<HasAdaptiveExt> loader = ExtensionLoader.getExtensionLoader(HasAdaptiveExt.class);
+        // 获取适配扩展点
         HasAdaptiveExt ext = loader.getAdaptiveExtension();
+        // 判断是否添加了HasAdaptiveExt_ManualAdaptive
         assertTrue(ext instanceof HasAdaptiveExt_ManualAdaptive);
     }
 
