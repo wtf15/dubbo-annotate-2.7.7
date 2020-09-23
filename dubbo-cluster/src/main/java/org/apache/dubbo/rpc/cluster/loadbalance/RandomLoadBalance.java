@@ -46,8 +46,11 @@ public class RandomLoadBalance extends AbstractLoadBalance {
     @Override
     protected <T> Invoker<T> doSelect(List<Invoker<T>> invokers, URL url, Invocation invocation) {
         // Number of invokers
+        // Invoker 总数
         int length = invokers.size();
         // Every invoker has the same weight?
+        // 判断是不是所有的 Invoker 的权重都是一样的
+        // 如果权重都一样，就简单了。直接用Random生成索引就可以了。
         boolean sameWeight = true;
         // the weight of every invokers
         int[] weights = new int[length];
@@ -55,6 +58,7 @@ public class RandomLoadBalance extends AbstractLoadBalance {
         int firstWeight = getWeight(invokers.get(0), invocation);
         weights[0] = firstWeight;
         // The sum of weights
+        // 所有 Invoker 的权重的和
         int totalWeight = firstWeight;
         for (int i = 1; i < length; i++) {
             int weight = getWeight(invokers.get(i), invocation);
@@ -62,12 +66,14 @@ public class RandomLoadBalance extends AbstractLoadBalance {
             weights[i] = weight;
             // Sum
             totalWeight += weight;
+            // 一旦找到第一个权重和第一个invoker不同的则sameWeight为false
             if (sameWeight && weight != firstWeight) {
                 sameWeight = false;
             }
         }
         if (totalWeight > 0 && !sameWeight) {
             // If (not every invoker has the same weight & at least one invoker's weight>0), select randomly based on totalWeight.
+            // 如果不是所有的 Invoker 权重都相同，那么基于权重来随机选择。权重越大的，被选中的概率越大
             int offset = ThreadLocalRandom.current().nextInt(totalWeight);
             // Return a invoker based on the random value.
             for (int i = 0; i < length; i++) {
@@ -78,6 +84,7 @@ public class RandomLoadBalance extends AbstractLoadBalance {
             }
         }
         // If all invokers have the same weight value or totalWeight=0, return evenly.
+        // 如果所有 Invoker 权重相同
         return invokers.get(ThreadLocalRandom.current().nextInt(length));
     }
 
