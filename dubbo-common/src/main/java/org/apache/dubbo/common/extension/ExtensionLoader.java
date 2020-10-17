@@ -420,6 +420,7 @@ public class ExtensionLoader<T> {
             throw new IllegalArgumentException("Extension name == null");
         }
         if ("true".equals(name)) {
+            // >>>>>>>>>
             return getDefaultExtension();
         }
         final Holder<Object> holder = getOrCreateHolder(name);
@@ -428,6 +429,7 @@ public class ExtensionLoader<T> {
             synchronized (holder) {
                 instance = holder.get();
                 if (instance == null) {
+                    // >>>>>>>>>
                     instance = createExtension(name);
                     holder.set(instance);
                 }
@@ -450,10 +452,12 @@ public class ExtensionLoader<T> {
      * Return default extension, return <code>null</code> if it's not configured.
      */
     public T getDefaultExtension() {
+        // >>>>>>>>>
         getExtensionClasses();
         if (StringUtils.isBlank(cachedDefaultName) || "true".equals(cachedDefaultName)) {
             return null;
         }
+        // >>>>>>>>>
         return getExtension(cachedDefaultName);
     }
 
@@ -642,8 +646,11 @@ public class ExtensionLoader<T> {
                 EXTENSION_INSTANCES.putIfAbsent(clazz, clazz.newInstance());
                 instance = (T) EXTENSION_INSTANCES.get(clazz);
             }
+            // 向扩展类注入其依赖的属性，如扩展类A又依赖了扩展类B
+            // >>>>>>>>>>
             injectExtension(instance);
             Set<Class<?>> wrapperClasses = cachedWrapperClasses;
+            // 遍历扩展点包转类，用于初始化包转类实例
             if (CollectionUtils.isNotEmpty(wrapperClasses)) {
                 for (Class<?> wrapperClass : wrapperClasses) {
                     instance = injectExtension((T) wrapperClass.getConstructor(type).newInstance(instance));
@@ -669,6 +676,7 @@ public class ExtensionLoader<T> {
 
         try {
             for (Method method : instance.getClass().getMethods()) {
+                // 找到以set开头的方法，要求只有一个参数，并且是public方法
                 if (!isSetter(method)) {
                     continue;
                 }
@@ -686,6 +694,7 @@ public class ExtensionLoader<T> {
                 try {
                     String property = getSetterProperty(method);
                     Object object = objectFactory.getExtension(pt, property);
+                    // 如果获取了这个扩展类实现，则调用set方法，把实力注入进去
                     if (object != null) {
                         method.invoke(instance, object);
                     }
@@ -745,6 +754,7 @@ public class ExtensionLoader<T> {
     // 加载当前扩展所有实现，看是否有实现类上被标注@Adaptive
     private Map<String, Class<?>> getExtensionClasses() {
         // 多次判断是为了防止同一个扩展点被多次加载
+        // 先尝试从缓存中获取classes
         Map<String, Class<?>> classes = cachedClasses.get();
         if (classes == null) {
             synchronized (cachedClasses) {
@@ -766,6 +776,8 @@ public class ExtensionLoader<T> {
      */
     private Map<String, Class<?>> loadExtensionClasses() {
         // >>>>>>>>>
+        // 检查是否有SPI注解。如果有，则获取注解中填写的名称，并缓存为默认实现名。
+        // 如@SPI("impl")会保存impl为默认实现
         cacheDefaultExtensionName();
 
         Map<String, Class<?>> extensionClasses = new HashMap<>();
@@ -915,10 +927,11 @@ public class ExtensionLoader<T> {
                     type + ", class line: " + clazz.getName() + "), class "
                     + clazz.getName() + " is not subtype of interface.");
         }
-        // 当前扩展点实现类是否有Adaptive注解
+        // 当前扩展点实现类是否有Adaptive注解，如果是自适应类（Adaptive）则缓存
         if (clazz.isAnnotationPresent(Adaptive.class)) {
+            // >>>>>>>>>
             cacheAdaptiveClass(clazz, overridden);
-            // 没有Adaptive注解，则判断是不是包装类
+            // 没有Adaptive注解，则判断是不是包装类，如果是则直接加入包装类扩展类的set集合
             // >>>>>>>>>
         } else if (isWrapperClass(clazz)) {
             cacheWrapperClass(clazz);
@@ -938,7 +951,10 @@ public class ExtensionLoader<T> {
             // 将文件中的key用逗号分割
             String[] names = NAME_SEPARATOR.split(name);
             if (ArrayUtils.isNotEmpty(names)) {
+                // 如果有自动激活注解（Activate），则缓存到自动激活的缓存中
                 cacheActivateClass(clazz, names[0]);
+                // 不是自适应类型，也不是包装类型，剩下的就是普通扩展类，也会缓存起来
+                // 注意：自动激活也是普通扩展类的一种，只是会根据不同条件同时激活罢了
                 for (String n : names) {
                     // 加入配置了name1，name2=com.alibaba.DemoInterface,这时候在cachedNames中只会存储一个name1
                     cacheName(clazz, n);
